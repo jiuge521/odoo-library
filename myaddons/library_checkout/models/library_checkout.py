@@ -14,6 +14,7 @@ class Checkout(models.Model):
     line_ids = fields.One2many('library.checkout.line', 'checkout_id', string='Borrowed Books')
     checkout_date = fields.Date(readonly=True)
     close_date = fields.Date(readonly=True)
+    # member_image = fields.Binary(related=member_id.partner_id.image)
 
     @api.model
     def _default_stage(self):
@@ -25,7 +26,23 @@ class Checkout(models.Model):
         return stages.search([], order=order)
 
     stage_id = fields.Many2one('library.checkout.stage', default=_default_stage, group_expand=_group_expand_stage_id)
-    stage = fields.Selection(related='stage_id.state')
+    state = fields.Selection(related='stage_id.state')
+    num_other_checkouts = fields.Integer(compute='_compute_num_other_checkouts')
+    num_books = fields.Integer(compute='_compute_num_books')
+
+    @api.depends('line_ids')
+    def _compute_num_books(self):
+        for book in self:
+            book.num_books = len(book.line_ids)
+
+    def _compute_num_other_checkouts(self):
+        for rec in self:
+            domain = [
+                ('member_id', '=', 'rec.member_id.id'),
+                ('state', 'in', ['open']),
+                ('id', '!=', rec.id)
+            ]
+            rec.num_other_checkouts = self.search_count(domain)
 
     @api.model
     def create(self, vals):
@@ -62,6 +79,13 @@ class Checkout(models.Model):
                     'message': 'Request date changed to today.'
                 }
             }
+
+    def button_done(self):
+        Stage = self.env['library.checkout.stage']
+        done_stage = Stage.search([('state', '=', 'done')], limit=1)
+        for checkout in self:
+            checkout.stage_id = done_stage
+        return True
 
 
 class CheckoutLine(models.Model):
