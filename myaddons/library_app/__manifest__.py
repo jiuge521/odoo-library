@@ -31,6 +31,8 @@
         'views/library_menu.xml',
         'views/book_view.xml',
         'data/book_demo.xml',
+        'reports/library_book_report.xml',
+        'reports/library_book_sql_report.xml',
     ],
     # only loaded in demonstration mode
     'demo': [
